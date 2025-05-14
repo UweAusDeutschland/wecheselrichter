@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Netzfrequenz {{ filename }}</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Scrollbalken vermeiden */
+        }
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Bild vollständig anzeigen */
+        }
+    </style>
+</head>
+<body>
+    <img src="{{ url_for('chart_img', filename=filename) }}" alt="Frequenzdiagramm">
+</body>
+</html>

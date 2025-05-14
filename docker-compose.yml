@@ -1,0 +1,9 @@
+version: '3'
+services:
+  sungrow-monitor:
+    build: .
+    volumes:
+      - ./data:/app/webbrowser/data  # Daten persistent speichern
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
