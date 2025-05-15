@@ -2,13 +2,14 @@ import time
 from sungrowinverter import SungrowInverter
 from datetime import datetime
 
+
 last_freq = None
 interval = 0.05
 next_call = time.time()
 sgi = SungrowInverter(host="modbusSungrow.fritz.box")
 current_day = datetime.now().date()
 filename = f"data/frequency_{current_day}.csv"
-print(filename)
+
 try:
     while True:
         freq = sgi.get_frequency()
@@ -28,5 +29,5 @@ try:
 except KeyboardInterrupt:
     print("Überwachung beendet.")
 except Exception as e:
-    print("Shuting down of erro.")
+    print("Shuting down of error.")
     print(e)

@@ -36,7 +36,6 @@ def chart_img(filename):
     df["time"] = pd.to_datetime(df["time"], format="%H:%M:%S.%f")
     min_freq = df["freq"].min() - 0.01
     max_freq = df["freq"].max() + 0.01
-    print(f'Min: {min_freq} Hz und Max: {max_freq} Hz')
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.axhspan(49.98, 50.02, color='green', alpha=0.15, label='Normalbereich (49,98–50,02 Hz)')
     if min_freq < 49.98 and max_freq >= 49.8:
@@ -78,4 +77,4 @@ def download_file(filename):
     return send_file(filepath, as_attachment=True)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
