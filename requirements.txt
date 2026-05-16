@@ -1,9 +1,25 @@
-flask
-pandas
-matplotlib
-numpy
-pyModbusTCP
-gunicorn
-pytest
-pytest-flask
-pytest-mock
+# Wecheselrichter - Requirements mit Versionen für Produktion
+
+## Webserver & HTTP
+Flask>=2.3.0           # Web-Framework
+flask-limiter>=3.5.0   # Rate-Limiting (optional, vgl. app.py)
+flask-cors>=4.0.0      # CORS-Unterstützung für Web-Oberfläche
+
+## Datenverarbeitung & Grafiken
+pandas>=2.0.0          # Datenmanipulation und -analyse
+matplotlib>=3.7.0      # Diagrammgenerierung
+numpy>=1.24.0          # Numerische Berechnungen
+
+## Modbus-Kommunikation
+pyModbusTCP==0.3.0     # Modbus-TCP-Kommunikation (Maximalversion: 0.3.0)
+
+## Docker & Deployment
+gunicorn>=21.2.0       # Produktions-WSGI Server
+
+## Testing & Entwicklung
+pytest>=7.4.0          # Test-Framework
+pytest-flask>=1.3.0    # Flask-spezifische Tests
+pytest-mock>=3.12.0    # Mocking für Unit-Tests
+
+## Logging (optional, kann auch über pip install loguru verwendet werden)
+python-json-logger>=2.0.7  # JSON-formatierte Logs für Docker
