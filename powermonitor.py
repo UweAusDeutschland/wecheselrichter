@@ -1,9 +1,15 @@
+# powermonitor.py — Refactored power monitor using monitor_base module
 import os
-import socket
 import time
-import logging
-from sungrowinverter import SungrowInverter
 from datetime import datetime, timedelta
+from sungrowinverter import SungrowInverter
+
+# Import shared utilities from monitor_base
+from monitor_base import (
+    resolve_with_retry,
+    test_port,
+    cleanup_old_csv_files,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -11,45 +17,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 HOST = os.getenv("INVERTER_HOST", "modbusSungrow.fritz.box")
 MODBUS_PORT = int(os.getenv("INVERTER_PORT", "502"))
 
-def resolve_with_retry(host, retries=5, delay=2):
-    for i in range(retries):
-        try:
-            infos = socket.getaddrinfo(host, None)
-            return infos[0][4][0]
-        except socket.gaierror:
-            print(f"DNS lookup failed for {host}, retry {i+1}/{retries}")
-            time.sleep(delay)
-    raise RuntimeError(f"Could not resolve host {host}")
 
-def test_port(ip, port, retries=5, delay=2):
-    for i in range(retries):
-        try:
-            socket.create_connection((ip, port), timeout=3).close()
-            return True
-        except Exception as e:
-            print(f"Port {port} on {ip} not reachable ({e}), retry {i+1}/{retries}")
-            time.sleep(delay)
-    return False
+def make_sgi(connect_host: str) -> SungrowInverter:
+    """Erstellt einen SungrowInverter-Client mit der gegebenen Hostadresse."""
+    logging.info("Creating SungrowInverter with host %s", connect_host)
+    return SungrowInverter(host=connect_host)
+
 
 # ensure data dir exists
 os.makedirs("data", exist_ok=True)
 
 # Cleanup old data files (älter als 90 Tage)
 RETENTION_DAYS = int(os.getenv("RETENTION_DAYS", "90"))
-def cleanup_old_files():
-    cutoff_date = datetime.now() - timedelta(days=RETENTION_DAYS)
-    for filename in os.listdir("data"):
-        if filename.startswith("pv_power_") and filename.endswith(".csv"):
-            filepath = os.path.join("data", filename)
-            file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
-            if file_time < cutoff_date:
-                try:
-                    os.remove(filepath)
-                    logging.info(f"Deleted old file: {filename}")
-                except Exception as e:
-                    logging.warning(f"Could not delete {filename}: {e}")
-
-cleanup_old_files()
+cleanup_old_csv_files(base_dir="data", prefix="pv_power_", retention_days=RETENTION_DAYS)
 
 # Resolve host and verify port
 try:
@@ -61,16 +41,19 @@ except Exception as e:
     raise SystemExit(1)
 
 # Use resolved IP for the SungrowInverter to avoid repeated DNS lookups
-def make_sgi(connect_host):
-    logging.info("Creating SungrowInverter with host %s", connect_host)
-    return SungrowInverter(host=connect_host)
-
 sgi = make_sgi(ip)
+
 last_power = None
 interval = 1.0  # Alle 1 Sekunde auslesen
 next_call = time.time()
 current_day = datetime.now().date()
 filename = f"data/pv_power_{current_day}.csv"
+
+
+def _get_time_str():
+    """Erzeugt einen Zeitstempel bis Millisekunden."""
+    return datetime.now().strftime('%H:%M:%S.%f')[:-3]
+
 
 try:
     while True:
@@ -105,10 +88,10 @@ try:
                     current_day = now.date()
                     filename = f"data/pv_power_{current_day}.csv"
                 with open(filename, "a") as f:
-                    time_str = now.strftime('%H:%M:%S.%f')[:-3]  # Nur bis Millisekunden
+                    time_str = _get_time_str()  # Nur bis Millisekunden
                     f.write(f"{time_str},{power}\n")
                 last_power = power
-        
+
         next_call += interval
         sleep_time = max(0, next_call - time.time())
         time.sleep(sleep_time)
