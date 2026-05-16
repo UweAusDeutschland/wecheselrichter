@@ -38,6 +38,7 @@ def chart_img(filename):
     # Bestimme Datentyp basierend auf Dateiname
     is_frequency = filename.startswith("frequency_")
     is_power = filename.startswith("pv_power_")
+    is_battery = filename.startswith("battery_")
     
     fig, ax = plt.subplots(figsize=(10, 4))
     
@@ -68,6 +69,15 @@ def chart_img(filename):
         ax.axhspan(0, df["value"].max() * 0.9, color='green', alpha=0.05)
         plt.plot(df["time"], df["value"], marker='o', linestyle='-', label='PV-Leistung', markersize=2, color='orange')
         y_label = "Leistung (Watt)"
+        
+    elif is_battery:
+        # Battery-Daten (Prozent)
+        ax.axhspan(0, 20, color='red', alpha=0.1, label='Kritisch (<20%)')
+        ax.axhspan(20, 80, color='yellow', alpha=0.05, label='Normal (20-80%)')
+        ax.axhspan(80, 100, color='green', alpha=0.1, label='Gut (80-100%)')
+        plt.plot(df["time"], df["value"], marker='o', linestyle='-', label='Batterieladung', markersize=2, color='blue')
+        ax.set_ylim(0, 105)
+        y_label = "Batterieladung (%)"
     else:
         # Unbekannter Datentyp - Fallback
         plt.plot(df["time"], df["value"], marker='o', linestyle='-', label='Wert', markersize=2)

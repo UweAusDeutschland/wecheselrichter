@@ -25,6 +25,7 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 
 COPY frequencymonitor.py .
 COPY powermonitor.py .
+COPY batterymonitor.py .
 COPY sungrowinverter.py .
 COPY webbrowser/ ./webbrowser/
 COPY entrypoint.sh /app/entrypoint.sh
