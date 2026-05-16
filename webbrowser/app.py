@@ -31,34 +31,53 @@ def chart_img(filename):
     if not os.path.exists(filepath):
         abort(404)
     
-    # Diagramm erstellen (wie bisher)
-    df = pd.read_csv(filepath, names=["time", "freq"])
+    # Diagramm erstellen
+    df = pd.read_csv(filepath, names=["time", "value"])
     df["time"] = pd.to_datetime(df["time"], format="%H:%M:%S.%f")
-    min_freq = df["freq"].min() - 0.01
-    max_freq = df["freq"].max() + 0.01
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.axhspan(49.98, 50.02, color='green', alpha=0.15, label='Normalbereich (49,98–50,02 Hz)')
-    if min_freq < 49.98 and max_freq >= 49.8:
-        lower_limit = 49.8 if min_freq < 49.8 else min_freq
-        ax.axhspan( lower_limit, 49.98, color='orange', alpha=0.15, label='Toleranzbereich (49,8–49,98 Hz)')
-    if max_freq > 50.02 and min_freq <= 50.2:
-        upper_limit =  50.2 if max_freq > 50.2 else max_freq
-        ax.axhspan(50.02, upper_limit, color='orange', alpha=0.15, label='Toleranzbereich (50,02–50,2 Hz)')
-        ax.text(df["time"].iloc[len(df)//2], 50.04, "Toleranzbereich (49,8 – 50,2 Hz)", color="black",
-            fontsize=12, ha="center", va="center", alpha=0.7, weight='bold')
-    if min_freq < 49.8:
-        ax.axhspan(ax.get_ylim()[0], 49.8, color='red', alpha=0.10, label='Kritisch (<49,8 Hz)')
     
-    if max_freq > 50.2:
-        ax.axhspan(50.2, ax.get_ylim()[1], color='red', alpha=0.10, label='Kritisch (>50,2 Hz)')
-        ax.text(df["time"].iloc[len(df)//2], 50.21, "Kritisch", color="red",
-            fontsize=12, ha="center", va="center", alpha=0.7, weight='bold')
+    # Bestimme Datentyp basierend auf Dateiname
+    is_frequency = filename.startswith("frequency_")
+    is_power = filename.startswith("pv_power_")
+    
+    fig, ax = plt.subplots(figsize=(10, 4))
+    
+    if is_frequency:
+        # Frequenzdaten (Hz)
+        min_val = df["value"].min() - 0.01
+        max_val = df["value"].max() + 0.01
+        ax.axhspan(49.98, 50.02, color='green', alpha=0.15, label='Normalbereich (49,98–50,02 Hz)')
+        if min_val < 49.98 and max_val >= 49.8:
+            lower_limit = 49.8 if min_val < 49.8 else min_val
+            ax.axhspan(lower_limit, 49.98, color='orange', alpha=0.15, label='Toleranzbereich (49,8–49,98 Hz)')
+        if max_val > 50.02 and min_val <= 50.2:
+            upper_limit = 50.2 if max_val > 50.2 else max_val
+            ax.axhspan(50.02, upper_limit, color='orange', alpha=0.15, label='Toleranzbereich (50,02–50,2 Hz)')
+            ax.text(df["time"].iloc[len(df)//2], 50.04, "Toleranzbereich (49,8 – 50,2 Hz)", color="black",
+                fontsize=12, ha="center", va="center", alpha=0.7, weight='bold')
+        if min_val < 49.8:
+            ax.axhspan(ax.get_ylim()[0], 49.8, color='red', alpha=0.10, label='Kritisch (<49,8 Hz)')
+        if max_val > 50.2:
+            ax.axhspan(50.2, ax.get_ylim()[1], color='red', alpha=0.10, label='Kritisch (>50,2 Hz)')
+            ax.text(df["time"].iloc[len(df)//2], 50.21, "Kritisch", color="red",
+                fontsize=12, ha="center", va="center", alpha=0.7, weight='bold')
+        plt.plot(df["time"], df["value"], marker='o', linestyle='-', label='Frequenz', markersize=2)
+        y_label = "Frequenz (Hz)"
+        
+    elif is_power:
+        # Power-Daten (Watt)
+        ax.axhspan(0, df["value"].max() * 0.9, color='green', alpha=0.05)
+        plt.plot(df["time"], df["value"], marker='o', linestyle='-', label='PV-Leistung', markersize=2, color='orange')
+        y_label = "Leistung (Watt)"
+    else:
+        # Unbekannter Datentyp - Fallback
+        plt.plot(df["time"], df["value"], marker='o', linestyle='-', label='Wert', markersize=2)
+        y_label = "Wert"
+    
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-    plt.plot(df["time"], df["freq"], marker='o', linestyle='-', label='Frequenz', markersize=2)
     basename = filename.split('_', 1)[-1].split('.', 1)[0]
-    plt.title(f"Netzfrequenz {basename}")
+    plt.title(f"{basename}")
     plt.xlabel("Zeit")
-    plt.ylabel(f"Frequenz in Hz")
+    plt.ylabel(y_label)
     plt.grid(True)
     plt.tight_layout()
     

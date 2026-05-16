@@ -1,5 +1,4 @@
 #!/bin/bash
-# ...existing code...
 APP_DIR="/app"
 export PYTHONPATH="$APP_DIR:$PYTHONPATH"
 
@@ -9,11 +8,14 @@ chmod 755 "$APP_DIR/data" 2>/dev/null || true
 
 # Start the frequency monitor in the background (use absolute path, unbuffered)
 python -u "$APP_DIR/frequencymonitor.py" &
-MONITOR_PID=$!
+FREQ_PID=$!
 
-# On SIGTERM/SIGINT forward to background process and exit
-trap 'echo "Stopping..."; kill -TERM "$MONITOR_PID" 2>/dev/null || true; wait "$MONITOR_PID"; exit 0' TERM INT
+# Start the power monitor in the background
+python -u "$APP_DIR/powermonitor.py" &
+POWER_PID=$!
+
+# On SIGTERM/SIGINT forward to background processes and exit
+trap 'echo "Stopping..."; kill -TERM "$FREQ_PID" "$POWER_PID" 2>/dev/null || true; wait; exit 0' TERM INT
 
 # Replace shell with gunicorn so signals are delivered to it
 exec gunicorn --bind 0.0.0.0:5000 webbrowser.app:app
-# ...existing code...
