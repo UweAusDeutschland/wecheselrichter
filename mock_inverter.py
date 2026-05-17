@@ -1,30 +1,9 @@
 """
-test_sungrowinverter.py — Unit tests for sungrow inverter module
-
-Tests coverage target: 85-90% (excluding integration tests)
-
-Test cases:
-1. get_temperature() edge cases (DC+, DC-, AC+, AC-)
-2. get_grid_frequency() variance testing
-3. get_grid_voltage_all_phases() verification
-4. get_grid_power_active/reactive validation
-5. get_pv_power_input_1/2 scaling verification
-6. get_pv_voltage_input_1/2 range checking
-7. get_pv_current_input_1/2 precision testing
-8. get_battery_soc() range validation (0-100%)
-9. get_battery_voltage() edge cases
-10. get_system_status() all codes coverage
-11. get_error_code() handling
-12. get_energy_statistics() lifetime/today/month
-13. Multiple register reads in sequence
+mock_inverter.py — Mock SungrowInverter for unit testing without hardware
 """
 
-import pytest
-from unittest.mock import patch, MagicMock, mock_open
-import socket
+from typing import Optional, List, Dict, Any
 
-
-# Mock SungrowInverter for testing without hardware
 class MockSungrowInverter:
     """Mock inverter that returns static/test data."""
     
@@ -66,19 +45,19 @@ class MockSungrowInverter:
     def __init__(self):
         self._data = self.CONFIG.copy()
     
-    def get_battery_soc(self) -> float:
+    def get_battery_soc(self) -> Optional[float]:
         """Returns battery state of charge in percentage."""
         return self._data.get('battery_soc')
     
-    def get_battery_voltage(self) -> float:
+    def get_battery_voltage(self) -> Optional[float]:
         """Returns battery terminal voltage in Volts."""
         return self._data.get('battery_voltage')
     
-    def get_grid_frequency(self) -> float:
+    def get_grid_frequency(self) -> Optional[float]:
         """Returns grid frequency in Hz."""
         return self._data.get('grid_frequency')
     
-    def get_grid_voltage(self, phase: str = 'l1') -> float:
+    def get_grid_voltage(self, phase: str = 'l1') -> Optional[float]:
         """Returns grid line voltage in Volts."""
         mapping = {
             'l1': self._data['grid_voltage_l1'],
@@ -87,7 +66,7 @@ class MockSungrowInverter:
         }
         return mapping.get(phase)
     
-    def get_grid_power(self, type: str = 'active') -> int:
+    def get_grid_power(self, type: str = 'active') -> Optional[int]:
         """Returns grid power in Watts."""
         if type == 'active':
             return self._data['active_power_grid']
@@ -95,12 +74,12 @@ class MockSungrowInverter:
             return self._data['reactive_power_grid']
         return None
     
-    def get_pv_power(self, input_num: int = 1) -> int:
+    def get_pv_power(self, input_num: int = 1) -> Optional[int]:
         """Returns PV power in Watts."""
         key = f'pv_power_input_{input_num}'
         return self._data.get(key)
     
-    def get_pv_voltage(self, input_num: int = 1) -> float:
+    def get_pv_voltage(self, input_num: int = 1) -> Optional[float]:
         """Returns PV voltage in Volts."""
         mapping = {
             1: self._data['pv_voltage_input_1'],
@@ -108,7 +87,7 @@ class MockSungrowInverter:
         }
         return mapping.get(input_num)
     
-    def get_pv_current(self, input_num: int = 1) -> float:
+    def get_pv_current(self, input_num: int = 1) -> Optional[float]:
         """Returns PV current in Ampères."""
         mapping = {
             1: self._data['pv_current_input_1'],
@@ -116,7 +95,7 @@ class MockSungrowInverter:
         }
         return mapping.get(input_num)
     
-    def get_temperature(self, location: str) -> float:
+    def get_temperature(self, location: str) -> Optional[float]:
         """Returns temperature in °C for specified terminal."""
         mapping = {
             'dc_plus': self._data['temp_dc_plus'],
@@ -126,7 +105,7 @@ class MockSungrowInverter:
         }
         return mapping.get(location)
     
-    def get_system_status(self):
+    def get_system_status(self) -> Optional[Dict[str, Any]]:
         """Returns system status code and description."""
         if self._data['system_status_code'] == 0:
             return {'code': 0, 'description': 'Normal / OK'}
@@ -136,11 +115,11 @@ class MockSungrowInverter:
             return {'code': self._data['system_status_code'], 
                     'description': f'Unknown code ({self._data["system_status_code"]})'}
     
-    def get_error_code(self) -> float:
+    def get_error_code(self) -> Optional[float]:
         """Returns error code (×10)."""
         return self._data.get('error_code_1')
     
-    def get_energy_statistics(self, period: str = 'lifetime') -> float:
+    def get_energy_statistics(self, period: str = 'lifetime') -> Optional[float]:
         """Returns energy statistics dictionary."""
         mapping = {
             'lifetime': self._data['energy_lifetime'],
@@ -148,54 +127,3 @@ class MockSungrowInverter:
             'month': self._data['energy_month'],
         }
         return mapping.get(period)
-
-
-class TestSungrowInverterInit:
-    """Tests for SungrowInverter initialization."""
-    
-    def test_sungrowinverter_init(self):
-        """Test inverter with mocked registers."""
-        from mock_inverter import MockSungrowInverter
-        
-        inverter = MockSungrowInverter()
-        
-        assert isinstance(inverter, MockSungrowInverter)
-
-
-class TestGetTemperature:
-    """Tests for get_temperature() edge cases."""
-    
-    def test_get_temperature_dc_plus(self):
-        """Test DC+ terminal temperature reading (positive value)."""
-        from mock_inverter import MockSungrowInverter
-        
-        inverter = MockSungrowInverter()
-        temp = inverter.get_temperature('dc_plus')
-        
-        assert temp == 40.0
-    
-    def test_get_temperature_all_locations(self):
-        """Test all temperature locations."""
-        from mock_inverter import MockSungrowInverter
-        
-        inverter = MockSungrowInverter()
-        
-        # Test all terminal temperatures
-        temps = {
-            'dc_plus': 40.0,
-            'dc_minus': 38.5,
-            'ac_plus': 35.0,
-            'ac_minus': 34.5,
-        }
-        
-        for location, expected in temps.items():
-            temp = inverter.get_temperature(location)
-            assert temp == expected
-    
-    def test_get_temperature_negative(self):
-        """Test temperature handling (negative values if applicable)."""
-        from mock_inverter import MockSungrowInverter
-        
-        # Simulate cold weather scenario by modifying config
-        inverter = MockSungrowInverter()
-        
