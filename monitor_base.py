@@ -3,6 +3,7 @@
 # Multi-Inverter vorbereitet
 
 import os
+import logging
 import socket
 import time
 import logging

@@ -1,5 +1,6 @@
 # batterymonitor.py — Refactored battery monitor using monitor_base module
 import os
+import logging
 import time
 from datetime import datetime, timedelta
 from sungrowinverter import SungrowInverter

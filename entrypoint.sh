@@ -9,13 +9,13 @@ echo "Starting monitor services..."
 mkdir -p /data/pid_files
 
 # Start battery monitor (slower sampling, less frequent)
-nohup python3 batterymonitor.py >> /var/log/battery.log 2>&1 &
+nohup python3 batterymonitor.py  2>&1 &
 
 # Start frequency monitor (fastest sampling for grid stability monitoring)  
-nohup python3 frequencymonitor.py >> /var/log/frequency.log 2>&1 &
+nohup python3 frequencymonitor.py  2>&1 &
 
 # Start power monitor (real-time PV output monitoring)
-nohup python3 powermonitor.py >> /var/log/power.log 2>&1 &
+nohup python3 powermonitor.py  2>&1 &
 
 # Record all started PIDs for watchdog and debugging
 echo "Battery monitor PID: $!" > /data/pid_files/battery.pid

@@ -1,5 +1,6 @@
 # frequencymonitor.py — Refactored frequency monitor using monitor_base module
 import os
+import logging
 import time
 from datetime import datetime
 from sungrowinverter import SungrowInverter
