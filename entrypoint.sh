@@ -26,7 +26,7 @@ echo "All monitors started."
 
 # Start Gunicorn for the web interface (foreground mode) - FIXED PATH
 exec gunicorn "webbrowser.app:app" \
-    --bind 0.0.0.0:8080 \
+    --bind 0.0.0.0:5000 \
     --workers 2 \
     --timeout 120 \
     --pythonpath "/opt/monitors:/opt/monitors/webbrowser:$PYTHONPATH"
