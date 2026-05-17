@@ -1,8 +1,9 @@
+# docker-compose.yml - Sungrow Inverter Monitor mit Flask Webinterface
 services:
   sungrow-monitor:
     build: .
     volumes:
       - ./data:/app/data  # Daten persistent speichern
     ports:
-      - "5000:5000"
+      - "8080:8080"
     restart: unless-stopped

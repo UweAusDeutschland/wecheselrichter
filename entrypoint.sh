@@ -1,25 +1,32 @@
 #!/bin/bash
-APP_DIR="/app"
-export PYTHONPATH="$APP_DIR:$PYTHONPATH"
 
-# ensure data directory exists where the app expects it
-mkdir -p "$APP_DIR/data"
-chmod 755 "$APP_DIR/data" 2>/dev/null || true
+set -e
 
-# Start the frequency monitor in the background (use absolute path, unbuffered)
-python -u "$APP_DIR/frequencymonitor.py" &
-FREQ_PID=$!
+echo "=== Wecheselrichter Entrypoint Script ==="
+echo "Starting monitor services..."
 
-# Start the power monitor in the background
-python -u "$APP_DIR/powermonitor.py" &
-POWER_PID=$!
+# Ensure directories exist
+mkdir -p /data/pid_files
 
-# Start the battery monitor in the background
-python -u "$APP_DIR/batterymonitor.py" &
-BATTERY_PID=$!
+# Start battery monitor (slower sampling, less frequent)
+nohup python3 batterymonitor.py >> /var/log/battery.log 2>&1 &
 
-# On SIGTERM/SIGINT forward to background processes and exit
-trap 'echo "Stopping..."; kill -TERM "$FREQ_PID" "$POWER_PID" "$BATTERY_PID" 2>/dev/null || true; wait; exit 0' TERM INT
+# Start frequency monitor (fastest sampling for grid stability monitoring)  
+nohup python3 frequencymonitor.py >> /var/log/frequency.log 2>&1 &
 
-# Replace shell with gunicorn so signals are delivered to it
-exec gunicorn --bind 0.0.0.0:5000 webbrowser.app:app
+# Start power monitor (real-time PV output monitoring)
+nohup python3 powermonitor.py >> /var/log/power.log 2>&1 &
+
+# Record all started PIDs for watchdog and debugging
+echo "Battery monitor PID: $!" > /data/pid_files/battery.pid
+echo "Frequency monitor PID: $!" > /data/pid_files/frequency.pid  
+echo "Power monitor PID: $!" > /data/pid_files/power.pid
+
+echo "All monitors started."
+
+# Start Gunicorn for the web interface (foreground mode) - FIXED PATH
+exec gunicorn "webbrowser.app:app" \
+    --bind 0.0.0.0:8080 \
+    --workers 2 \
+    --timeout 120 \
+    --pythonpath "/opt/monitors:/opt/monitors/webbrowser:$PYTHONPATH"
