@@ -8,15 +8,35 @@ from io import BytesIO
 from datetime import datetime
 import numpy as np
 import matplotlib.dates as mdates
+import re
 
 app = Flask(__name__)
 DATA_DIR = "data"
 
+def extract_date_from_filename(filename):
+    """Extrahiert das Datum aus einem Dateinamen (z.B. battery_2026-05-17.csv)"""
+    match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
+    if match:
+        return match.group(1)
+    return "0000-00-00"
+
+def get_today_date():
+    """Gibt das heutige Datum im Format YYYY-MM-DD zurück"""
+    return datetime.now().strftime("%Y-%m-%d")
+
 @app.route("/")
 def index():
     # Liste aller CSV-Dateien im Datenordner
-    files = [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]
-    return render_template("index.html", files=files)
+    all_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]
+    
+    # Nach Datum sortieren (neueste zuerst)
+    sorted_files = sorted(all_files, key=lambda f: extract_date_from_filename(f), reverse=True)
+    
+    # Dateien von heute filtern
+    today = get_today_date()
+    today_files = [f for f in sorted_files if extract_date_from_filename(f) == today]
+    
+    return render_template("index.html", files=sorted_files, today_files=today_files)
 
 @app.route("/chart/<filename>")
 def show_chart(filename):
@@ -40,7 +60,7 @@ def chart_img(filename):
     is_power = filename.startswith("pv_power_")
     is_battery = filename.startswith("battery_")
     
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(figsize=(12, 6))
     
     if is_frequency:
         # Frequenzdaten (Hz)
