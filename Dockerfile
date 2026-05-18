@@ -1,12 +1,14 @@
-FROM python:3.11-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     TZ=Europe/Berlin \
     PIP_EXTRA_INDEX_URL=https://www.piwheels.org/simple
 
+
 # Alles auf einmal: Build-Tools + Runtime-Libs + X11
 RUN apt-get update \
+ && apt-get upgrade -y \
  && apt-get install -y --no-install-recommends \
       build-essential g++ gfortran pkg-config \
       meson ninja-build \
