@@ -26,9 +26,7 @@ RUN python -m pip install --upgrade pip setuptools wheel \
  && pip install --no-cache-dir -r requirements.txt
 
 COPY monitor_base.py .
-COPY frequencymonitor.py .
-COPY powermonitor.py .
-COPY batterymonitor.py .
+COPY combined_monitor.py .
 COPY sungrowinverter.py .
 COPY webbrowser/ ./webbrowser/
 COPY entrypoint.sh /app/entrypoint.sh

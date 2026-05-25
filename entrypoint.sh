@@ -3,26 +3,18 @@
 set -e
 
 echo "=== Wecheselrichter Entrypoint Script ==="
-echo "Starting monitor services..."
+echo "Starting combined monitor service..."
 
-# Ensure directories exist
-mkdir -p /data/pid_files
+# Ensure directories exist (using volume mount path)
+mkdir -p /app/data/pid_files
 
-# Start battery monitor (slower sampling, less frequent)
-nohup python3 batterymonitor.py  2>&1 &
+# Start the COMBINED monitor (single process for all readings)
+nohup python3 combined_monitor.py 2>&1 &
 
-# Start frequency monitor (fastest sampling for grid stability monitoring)  
-nohup python3 frequencymonitor.py  2>&1 &
+COMBINED_PID=$!
+echo "Combined monitor PID: $COMBINED_PID" > /app/data/pid_files/combined.pid
 
-# Start power monitor (real-time PV output monitoring)
-nohup python3 powermonitor.py  2>&1 &
-
-# Record all started PIDs for watchdog and debugging
-echo "Battery monitor PID: $!" > /data/pid_files/battery.pid
-echo "Frequency monitor PID: $!" > /data/pid_files/frequency.pid  
-echo "Power monitor PID: $!" > /data/pid_files/power.pid
-
-echo "All monitors started."
+echo "Combined monitor started."
 
 # Start Gunicorn for the web interface (foreground mode) - FIXED PATH
 exec gunicorn "webbrowser.app:app" \
