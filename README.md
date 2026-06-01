@@ -23,31 +23,11 @@ Das Projekt überwacht einen **Sungrow SH6.0RT Wechselrichter** via Modbus-TCP u
 
 ### Option 1: Docker (Empfohlen für 24/7 Betrieb)
 
-**Auf Raspberry Pi (arm64/armhf):**
 ```bash
 # Clone und starten
 git clone https://github.com/UweAusDeutschland/wecheselrichter.git
 cd wecheselrichter
-
-# Build mit Cross-Compilation für ARM (Raspberry Pi)
-docker buildx build \
-  --platform linux/amd64,linux/arm/v7 \
-  -t usuelter/wecheselrichter:latest \
-  --push .
-
-# Oder lokal auf Pi ohne Push:
-docker buildx build \
-  --platform linux/arm/v7 \
-  -t wecheselrichter:latest \
-  .
-```
-
-**Auf x86/x64 Systemen:**
-```bash
-git clone https://github.com/UweAusDeutschland/wecheselrichter.git
-cd wecheselrichter
-docker build -t wecheselrichter .
-docker run -p 5000:5000 --rm -v $(pwd)/data:/app/data wecheselrichter
+docker-compose up --build
 ```
 
 Dann öffnen Sie: **http://localhost:5000**
@@ -58,10 +38,16 @@ Dann öffnen Sie: **http://localhost:5000**
 # Python 3.11+ erforderlich
 pip install -r requirements.txt
 
-# Combined Monitor starten (alle Werte in einem Prozess)
-python combined_monitor.py
+# Terminal 1: Power Monitor
+python powermonitor.py
 
-# Web App in anderem Terminal
+# Terminal 2: Frequency Monitor
+python frequencymonitor.py
+
+# Terminal 3: Battery Monitor
+python batterymonitor.py
+
+# Terminal 4: Web App
 python -m flask --app webbrowser.app run
 ```
 
@@ -86,6 +72,12 @@ python powermonitor.py
 ```
 
 **Oder in Docker:**
+```yaml
+# docker-compose.yml
+environment:
+  - INVERTER_HOST=192.168.1.100
+```
+
 ### Datenspeicherung
 
 Die Monitore speichern CSV-Dateien in `data/`:
@@ -198,6 +190,7 @@ wecheselrichter/
 ├── README.md                      # Diese Datei
 ├── requirements.txt               # Python-Abhängigkeiten
 ├── Dockerfile                     # Docker-Image
+├── docker-compose.yml             # Docker-Compose Konfiguration
 ├── entrypoint.sh                  # Container-Startscript
 │
 ├── sungrowinverter.py            # Modbus-Kommunikation (Klasse)
@@ -272,11 +265,11 @@ battery = inverter.get_battery_level()  # z.B. 85.5
 ### Container startet nicht
 
 ```bash
-# Logs anschauen (Docker)
-docker logs wecheselrichter --tail 100
+# Logs anschauen
+docker-compose logs -f sungrow-monitor-1
 
 # Netzwerk testen
-docker exec wecheselrichter ping modbusSungrow.fritz.box
+docker exec wecheselrichter-sungrow-monitor-1 ping modbusSungrow.fritz.box
 ```
 
 ### Keine Daten werden gesammelt

@@ -1,66 +1,167 @@
+"""
+Flask-Webserver mit Logging für Wecheselrichter
+"""
+import logging
+import sys
+from logging.handlers import RotatingFileHandler
+
+# Matplotlib Konfiguration (MUSS vor pyplot stehen!)
 import matplotlib
-matplotlib.use("Agg")  # Muss VOR dem Import von pyplot stehen!
+matplotlib.use("Agg")
 from matplotlib import pyplot as plt
-from flask import Flask, render_template, send_file, abort
+from flask import Flask, render_template, send_file, abort, request
 import os
 import pandas as pd
 from io import BytesIO
 from datetime import datetime
 import numpy as np
 import matplotlib.dates as mdates
-import re
+
+# Logging initialisieren
+def setup_logging():
+    """Logging konfigurieren mit RotatingFileHandler"""
+    # Logdatei im Verzeichnis über dem Projekt speichern
+    log_dir = os.path.dirname(os.path.dirname(__file__))
+    log_file = os.path.join(log_dir, "wecheselrichter_web.log")
+    
+    # RotatingFileHandler: Logdateien nach Größe rotieren (10MB Limit)
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=10 * 1024 * 1024,  # 10 MB
+        backupCount=5
+    )
+    
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    file_handler.setFormatter(formatter)
+    
+    # Console Handler für Debugging
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_formatter = logging.Formatter('%(levelname)s: %(message)s')
+    console_handler.setFormatter(console_formatter)
+    
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)  # DEBUG für mehr Details
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    return file_handler, console_handler
+
+setup_logging()
+
 
 app = Flask(__name__)
 DATA_DIR = "data"
 
-def extract_date_from_filename(filename):
-    """Extrahiert das Datum aus einem Dateinamen (z.B. battery_2026-05-17.csv)"""
-    match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
-    if match:
-        return match.group(1)
-    return "0000-00-00"
 
-def get_today_date():
-    """Gibt das heutige Datum im Format YYYY-MM-DD zurück"""
-    return datetime.now().strftime("%Y-%m-%d")
+@app.before_request
+def before_request():
+    """Allgemeine Request-Logging"""
+    logger.info(f"Request: {request.method} {request.path}")
+
+
+@app.after_request
+def after_request(response):
+    """Response-Header hinzufügen (CORS, Cache-Control)"""
+    # CORS Header für Web-Oberfläche
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    
+    # Kein Caching von Grafiken
+    if request.path.startswith('/chart_img'):
+        response.headers['Cache-Control'] = 'no-store'
+    
+    return response
+
 
 @app.route("/")
 def index():
-    # Liste aller CSV-Dateien im Datenordner
-    all_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]
+    """Startseite mit Dateiliste"""
+    try:
+        files = [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]
+        
+        logger.info(f"Zeige {len(files)} Dateien auf Startseite")
+        
+        if not files:
+            logger.warning("Keine CSV-Dateien im Datenordner gefunden!")
+            
+    except PermissionError as e:
+        logger.error(f"Lesezugriff verweigert: {e}")
+        abort(500)
+        
+    except Exception as e:
+        logger.exception(f"Fehler beim Auflisten von Dateien: {e}")
+        abort(500)
     
-    # Nach Datum sortieren (neueste zuerst)
-    sorted_files = sorted(all_files, key=lambda f: extract_date_from_filename(f), reverse=True)
-    
-    # Dateien von heute filtern
-    today = get_today_date()
-    today_files = [f for f in sorted_files if extract_date_from_filename(f) == today]
-    
-    return render_template("index.html", files=sorted_files, today_files=today_files)
+    return render_template("index.html", files=files)
+
 
 @app.route("/chart/<filename>")
 def show_chart(filename):
+    """Zeigt eine Chart-Seite an"""
     filepath = os.path.join(DATA_DIR, filename)
+    
+    # Existenzprüfung mit Logging
     if not os.path.exists(filepath):
+        logger.warning(f"Datei nicht gefunden: {filepath}")
         abort(404)
+        
+    try:
+        df = pd.read_csv(filepath)  # Test ob lesbar
+        
+    except PermissionError as e:
+        logger.error(f"Lesezugriff verweigert für {filename}: {e}")
+        abort(503)
+        
+    except Exception as e:
+        logger.exception(f"Fehler beim Lesen von {filename}: {e}")
+        abort(500)
+    
     return render_template("chart.html", filename=filename)
+
 
 @app.route("/chart_img/<filename>")
 def chart_img(filename):
+    """Generiert ein Bild eines Charts"""
     filepath = os.path.join(DATA_DIR, filename)
-    if not os.path.exists(filepath):
-        abort(404)
     
-    # Diagramm erstellen
-    df = pd.read_csv(filepath, names=["time", "value"])
-    df["time"] = pd.to_datetime(df["time"], format="%H:%M:%S.%f")
+    # Existenzprüfung mit Logging
+    if not os.path.exists(filepath):
+        logger.warning(f"Datei nicht gefunden: {filepath}")
+        abort(404)
+        
+    try:
+        df = pd.read_csv(filepath, names=["time", "value"])
+        df["time"] = pd.to_datetime(df["time"], format="%H:%M:%S.%f")
+        
+    except PermissionError as e:
+        logger.error(f"Lesezugriff verweigert für {filename}: {e}")
+        abort(503)
+        
+    except Exception as e:
+        logger.exception(f"Fehler beim Lesen von {filename}: {e}")
+        # Bei CSV-Fehlern trotzdem ein Bild generieren mit Fehlermeldung
+        try:
+            fig, ax = plt.subplots(figsize=(10, 4))
+            ax.text(0.5, 0.5, "Fehler bei Daten-Lesevorgang", 
+                    transform=ax.transAxes, ha='center')
+            ax.set_title(f"Datei: {filename}")
+            img_buffer = BytesIO()
+            fig.savefig(img_buffer, format="png")
+            plt.close(fig)
+            
+        except Exception as e2:
+            logger.exception(f"Fehler beim Generieren des Fallback-Bildes: {e2}")
+            abort(500)
     
     # Bestimme Datentyp basierend auf Dateiname
     is_frequency = filename.startswith("frequency_")
     is_power = filename.startswith("pv_power_")
     is_battery = filename.startswith("battery_")
     
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(10, 4))
     
     if is_frequency:
         # Frequenzdaten (Hz)
@@ -116,14 +217,24 @@ def chart_img(filename):
     img_buffer.seek(0)
     plt.close(fig)
     
+    logger.debug(f"Chart-Bild generiert: {filename}")
+    
     return send_file(img_buffer, mimetype="image/png")
+
 
 @app.route("/download/<filename>")
 def download_file(filename):
+    """Download einer Datei"""
     filepath = os.path.join(DATA_DIR, filename)
     if not os.path.exists(filepath):
+        logger.warning(f"Datei nicht gefunden für Download: {filepath}")
         abort(404)
     return send_file(filepath, as_attachment=True)
 
+
 if __name__ == "__main__":
+    logger.info("=" * 50)
+    logger.info("Wecheselrichter-Webserver startet...")
+    logger.info("=" * 50)
+    
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -4,30 +4,27 @@ Anleitung zum Deployment auf verschiedene Umgebungen.
 
 ## Docker (Recommended)
 
-### Lokal - Docker Build & Run
+### Lokal mit Docker Compose
 
 ```bash
 # Clone repo
 git clone https://github.com/UweAusDeutschland/wecheselrichter.git
 cd wecheselrichter
 
-# Build Image
-docker build -t wecheselrichter .
-
-# Start Container
-docker run -p 5000:5000 --rm -v $(pwd)/data:/app/data wecheselrichter
+# Start
+docker-compose up -d
 
 # Logs anschauen
-docker logs wecheselrichter -f
+docker-compose logs -f sungrow-monitor-1
 
 # Stop
-docker stop wecheselrichter
+docker-compose down
 ```
 
 **Anmerkungen:**
 - Port 5000 wird nach außen exposet
 - `data/` Volume wird persistiert
-- Container läuft im Vordergrund (für Debugging) oder im Hintergrund mit `-d` flag
+- Container läuft im Hintergrund (`-d` flag)
 
 ### Auf Docker Hub deployen
 
@@ -153,13 +150,13 @@ kubectl get pods
 
 ```bash
 # Live-Logs
-docker logs wecheselrichter -f
+docker-compose logs -f
 
 # Letzte 100 Zeilen
-docker logs --tail=100 wecheselrichter
+docker-compose logs --tail=100
 
 # Nur Errors
-docker logs wecheselrichter | grep ERROR
+docker-compose logs | grep ERROR
 ```
 
 ### Health-Check
@@ -173,7 +170,7 @@ ls -la data/
 tail -f data/frequency_*.csv
 
 # Modbus-Verbindung?
-docker exec wecheselrichter nc -zv modbusSungrow.fritz.box 502
+docker exec wecheselrichter-sungrow-monitor-1 nc -zv modbusSungrow.fritz.box 502
 ```
 
 ### Disk-Space-Management
@@ -200,6 +197,19 @@ docker-compose.yml:
 cp -r data/ /backup/data-$(date +%Y-%m-%d)/
 ```
 
+### Automatisch mit Docker
+
+```yaml
+# docker-compose.yml - backup service hinzufügen
+services:
+  backup:
+    image: alpine
+    volumes:
+      - ./data:/data
+      - ./backups:/backups
+    command: /bin/sh -c 'while true; do tar -czf /backups/backup-$(date +%Y-%m-%d-%H).tar.gz /data; sleep 86400; done'
+```
+
 ## Update-Prozess
 
 ### Neue Version deployen
@@ -209,32 +219,34 @@ cp -r data/ /backup/data-$(date +%Y-%m-%d)/
 git pull origin main
 
 # Neu bauen
-docker build -t wecheselrichten:latest .
-docker run -p 5000:5000 --rm -v $(pwd)/data:/app/data wecheselrichter:latest
+docker-compose down
+docker-compose up --build -d
 
 # Logs überprüfen
-docker logs wecheselrichter -f
+docker-compose logs -f
 ```
 
 ### Rollback bei Fehlern
 
 ```bash
-# Alte Version starten (mit Tag)
-docker run -p 5000:5000 --rm wecheselrichter:1.0.0
+# Alte Version starten
+git checkout v1.0.0
+docker-compose up --build -d
+
+# Oder mit Tag direkt
+docker run -p 5000:5000 dein-username/wecheselrichter:1.0.0
 ```
 
 ## Performance-Tipps
 
 ### CPU-Limits
 
-```dockerfile
-# Dockerfile - Ressourcenlimits hinzufügen
-ENV PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive \
-    TZ=Europe/Berlin
-...
-# Optional: CPU und Memory Limits setzen (optional)
-RUN echo "Setting resource limits..."
+```yaml
+# docker-compose.yml
+services:
+  sungrow-monitor:
+    cpu_shares: 512
+    mem_limit: 256m
 ```
 
 ### Sampling-Frequenz reduzieren
@@ -254,7 +266,7 @@ Für größere Deployments: CSV → InfluxDB/Prometheus
 ### Container crasht sofort
 
 ```bash
-docker logs wecheselrichter
+docker-compose logs
 # Checken: INVERTER_HOST erreichbar?
 # Checken: Port 502 offen?
 ```
@@ -263,13 +275,13 @@ docker logs wecheselrichter
 
 ```bash
 # Port gemappt?
-docker ps | grep wecheselrichter
+docker ps | grep 5000
 
 # Firewall?
 ufw allow 5000
 
 # Container laufen?
-docker ps | grep wecheselrichter
+docker-compose ps
 ```
 
 ### Speicher voll

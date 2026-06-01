@@ -1,24 +1,25 @@
 #!/bin/bash
+APP_DIR="/app"
+export PYTHONPATH="$APP_DIR:$PYTHONPATH"
 
-set -e
+# ensure data directory exists where the app expects it
+mkdir -p "$APP_DIR/data"
+chmod 755 "$APP_DIR/data" 2>/dev/null || true
 
-echo "=== Wecheselrichter Entrypoint Script ==="
-echo "Starting combined monitor service..."
+# Start the frequency monitor in the background (use absolute path, unbuffered)
+python -u "$APP_DIR/frequencymonitor.py" &
+FREQ_PID=$!
 
-# Ensure directories exist (using volume mount path)
-mkdir -p /app/data/pid_files
+# Start the power monitor in the background
+python -u "$APP_DIR/powermonitor.py" &
+POWER_PID=$!
 
-# Start the COMBINED monitor (single process for all readings)
-nohup python3 combined_monitor.py 2>&1 &
+# Start the battery monitor in the background
+python -u "$APP_DIR/batterymonitor.py" &
+BATTERY_PID=$!
 
-COMBINED_PID=$!
-echo "Combined monitor PID: $COMBINED_PID" > /app/data/pid_files/combined.pid
+# On SIGTERM/SIGINT forward to background processes and exit
+trap 'echo "Stopping..."; kill -TERM "$FREQ_PID" "$POWER_PID" "$BATTERY_PID" 2>/dev/null || true; wait; exit 0' TERM INT
 
-echo "Combined monitor started."
-
-# Start Gunicorn for the web interface (foreground mode) - FIXED PATH
-exec gunicorn "webbrowser.app:app" \
-    --bind 0.0.0.0:5000 \
-    --workers 2 \
-    --timeout 120 \
-    --pythonpath "/opt/monitors:/opt/monitors/webbrowser:$PYTHONPATH"
+# Replace shell with gunicorn so signals are delivered to it
+exec gunicorn --bind 0.0.0.0:5000 webbrowser.app:app
