@@ -82,6 +82,9 @@ try:
             sleep_time = next_call - now
             time.sleep(sleep_time)
         
+        # === Update current_day to handle date changes ===
+        current_day = datetime.now().date()
+        
         try:
             # Read ALL three values in a single Modbus connection
             freq = sgi.get_frequency()

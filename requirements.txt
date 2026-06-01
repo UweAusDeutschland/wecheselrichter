@@ -11,7 +11,7 @@ matplotlib>=3.7.0      # Diagrammgenerierung
 numpy>=1.24.0          # Numerische Berechnungen
 
 ## Modbus-Kommunikation
-pyModbusTCP==0.3.0     # Modbus-TCP-Kommunikation (Maximalversion: 0.3.0)
+pyModbusTCP>=0.2.0     # Modbus-TCP-Kommunikation mit Sungrow-Invertern (relaxed for ARM compatibility)
 
 ## Docker & Deployment
 gunicorn>=21.2.0       # Produktions-WSGI Server
