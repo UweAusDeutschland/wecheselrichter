@@ -16,12 +16,11 @@ Technische Übersicht der Systemarchitektur.
     ┌─────────────────────────────┐         ┌──────────────────────────┐
     │  Data Collection Layer      │         │  Web Presentation Layer  │
     ├─────────────────────────────┤         ├──────────────────────────┤
-    │ - frequencymonitor.py       │         │ - Flask App (Gunicorn)   │
-    │ - powermonitor.py           │         │ - Static Files (CSS)     │
-    │ - batterymonitor.py         │         │ - Templates (HTML)       │
-    │                             │         │                          │
-    │ [Sampling Threads]          │         │ [HTTP Server]            │
-    │ 50ms / 1s / 5s              │         │ Port 5000                │
+    │ - combined_monitor.py       │         │ - Flask App (Gunicorn)   │
+    │   (unified monitoring)      │         │ - Static Files (CSS)     │
+    │                             │         │ - Templates (HTML)       │
+    │ [Sampling Threads]          │         │                          │
+    │ 50ms / 1s / 5s              │         │ [HTTP Server]            │
     └─────────────────────────────┘         └──────────────────────────┘
               │                                      │
               │ Modbus TCP                          │ Read
@@ -56,28 +55,27 @@ Technische Übersicht der Systemarchitektur.
 
 ### 1. Monitor-Programme (Data Collection)
 
-#### `frequencymonitor.py`
+#### `combined_monitor.py` (Unified Monitoring)
 - **Sampling Rate:** 50ms (20 Hz)
 - **Daten:** Netzfrequenz (Hz)
 - **Speicherung:** `frequency_YYYY-MM-DD.csv`
 - **Logik:**
   - DNS resolution + retry
   - Kontinuierliches Polling
+   - Change detection (nur änderungen speichern)
+   - Automatisches Rollover bei Tageswechsel
+   - Automatisches Cleanup alter Dateien (>90 Tage)
+
+#### `combined_monitor.py` (Unified Monitoring)
+- **Sampling Rates:** 50ms / 1s / 5s (alle in einem Prozess)
+- **Daten:** Netzfrequenz, PV-Leistung, Batteriestand
+- **Speicherung:** Alle CSV-Typen in einer Datei (integriert alle früheren Monitore)
+- **Logik:**
+  - DNS resolution + retry
+  - Kontinuierliches Polling
   - Change detection (nur änderungen speichern)
   - Automatisches Rollover bei Tageswechsel
   - Automatisches Cleanup alter Dateien (>90 Tage)
-
-#### `powermonitor.py`
-- **Sampling Rate:** 1s (1 Hz)
-- **Daten:** PV-Leistung (Watt)
-- **Speicherung:** `pv_power_YYYY-MM-DD.csv`
-- **Logik:** Identisch zu frequencymonitor, aber 32-bit Little-Endian Konversion
-
-#### `batterymonitor.py`
-- **Sampling Rate:** 5s (0.2 Hz)
-- **Daten:** Batteriestand (%)
-- **Speicherung:** `battery_YYYY-MM-DD.csv`
-- **Logik:** Identisch zu frequencymonitor, aber 0.1-Skalierung
 
 ### 2. Device Layer
 
