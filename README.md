@@ -38,18 +38,17 @@ Dann öffnen Sie: **http://localhost:5000**
 # Python 3.11+ erforderlich
 pip install -r requirements.txt
 
-# Terminal 1: Power Monitor
-python powermonitor.py
+# Alle Monitore starten (als Hintergrundprozesse)
+python combined_monitor.py &
 
-# Terminal 2: Frequency Monitor
-python frequencymonitor.py
-
-# Terminal 3: Battery Monitor
-python batterymonitor.py
-
-# Terminal 4: Web App
+# Web App
 python -m flask --app webbrowser.app run
 ```
+
+**Hinweis:** Der kombinierte Monitor ersetzt die früheren separaten Prozesse:
+- `frequencymonitor.py` → integriert in `combined_monitor.py`
+- `powermonitor.py` → integriert in `combined_monitor.py`  
+- `batterymonitor.py` → integriert in `combined_monitor.py`
 
 Web-App öffnet auf: **http://localhost:5000**
 
@@ -68,7 +67,7 @@ Der Wechselrichter wird standardmäßig unter `modbusSungrow.fritz.box` erwartet
 **Umgebungsvariablen:**
 ```bash
 export INVERTER_HOST=192.168.1.100
-python powermonitor.py
+python combined_monitor.py &
 ```
 
 **Oder in Docker:**
@@ -110,17 +109,19 @@ Das Dashboard zeigt alle gesammelten CSV-Dateien an:
 
 ## 🏗️ Architektur
 
+### Docker-Architektur (vereinfacht)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Docker Container                      │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────┐ │
-│  │  frequencymon  │  │   powermonitor │  │ batterymon │ │
-│  │   (50ms-inte   │  │   (1s-int)     │  │ (5s-int)   │ │
-│  └────────────────┘  └────────────────┘  └────────────┘ │
-│           │                   │                 │         │
-│           └───────────────────┴─────────────────┘         │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │              Combined Monitor (Python)             │  │
+│  │  - Frequenz: Alle 50ms (hohe Auflösung)           │  │
+│  │  - Leistung: Alle 1 Sekunde                       │  │
+│  │  - Batterie: Alle 5 Sekunden                      │  │
+│  └───────────────────────────────────────────────────┘  │
 │                        │                                  │
 │                   [Modbus TCP]                            │
 │                        │                                  │
@@ -142,9 +143,14 @@ Das Dashboard zeigt alle gesammelten CSV-Dateien an:
 │  │  - data/ → CSV-Dateien (täglich)                   │ │
 │  └─────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
-         │
-         └─→ Port 5000 (HTTP)
+          │
+          └─→ Port 5000 (HTTP)
 ```
+
+### Vorher/Nachher: Monitor-Architektur
+
+**Vorher:** Drei separate Python-Scripte parallel laufen  
+**Nachher:** Ein vereinigtes `combined_monitor.py` mit allen Funktionen
 
 ## 📝 CSV-Format
 
@@ -194,10 +200,8 @@ wecheselrichter/
 ├── entrypoint.sh                  # Container-Startscript
 │
 ├── sungrowinverter.py            # Modbus-Kommunikation (Klasse)
-├── frequencymonitor.py           # Netzfrequenz-Sammler
-├── powermonitor.py               # PV-Leistungs-Sammler
-├── batterymonitor.py             # Batteriestand-Sammler
-│
+├── combined_monitor.py           # Vereinigter Monitor (ersetzt 3 separate Scripts)
+
 ├── webbrowser/
 │   ├── __init__.py
 │   ├── app.py                    # Flask-App (Hauptlogik)
@@ -276,12 +280,12 @@ docker exec wecheselrichter-sungrow-monitor-1 ping modbusSungrow.fritz.box
 
 - Wechselrichter erreichbar? → `ping modbusSungrow.fritz.box`
 - Port 502 offen? → `telnet modbusSungrow.fritz.box 502`
-- Modbus-Registers korrekt? → Logs in `frequencymonitor.py`, etc. überprüfen
+- Modbus-Registers korrekt? → Logs in `combined_monitor.py` überprüfen
 
 ### Web-App zeigt leere Liste
 
 - `data/` Verzeichnis existiert? → `ls -la data/`
-- CSV-Dateien vorhanden? → Monitor-Prozesse laufen?
+- CSV-Dateien vorhanden? → `combined_monitor.py` läuft?
 
 ## 📄 Lizenz
 
