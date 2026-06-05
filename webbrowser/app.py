@@ -48,9 +48,9 @@ def setup_logging():
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
     
-    return file_handler, console_handler
+    return file_handler, console_handler, root_logger
 
-setup_logging()
+file_handler, console_handler, logger = setup_logging()
 
 
 app = Flask(__name__)
@@ -60,7 +60,8 @@ DATA_DIR = "data"
 @app.before_request
 def before_request():
     """Allgemeine Request-Logging"""
-    logger.info(f"Request: {request.method} {request.path}")
+    if 'logger' in globals() and logger is not None:
+        logger.info(f"Request: {request.method} {request.path}")
 
 
 @app.after_request
@@ -80,12 +81,32 @@ def after_request(response):
 def index():
     """Startseite mit Dateiliste"""
     try:
-        files = [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]
+        # Parse date from filename and sort (newest first)
+        def parse_date(filename):
+            base = filename[:-4]  # remove .csv
+            for part in base.split('_'):
+                if '-' in part:
+                    try:
+                        return datetime.strptime(part, "%Y-%m-%d").date()
+                    except ValueError:
+                        continue
+            return None
+        
+        files = sorted(
+            [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")],
+            key=parse_date,
+            reverse=True  # newest first
+        )
         
         logger.info(f"Zeige {len(files)} Dateien auf Startseite")
         
         if not files:
             logger.warning("Keine CSV-Dateien im Datenordner gefunden!")
+        else:
+            # Extract today's date and filter today's files for the right panel
+            from datetime import date as dt_date
+            today = dt_date.today()
+            today_files = [f for f in files if parse_date(f) == today]
             
     except PermissionError as e:
         logger.error(f"Lesezugriff verweigert: {e}")
@@ -95,7 +116,7 @@ def index():
         logger.exception(f"Fehler beim Auflisten von Dateien: {e}")
         abort(500)
     
-    return render_template("index.html", files=files)
+    return render_template("index.html", files=files, today_files=today_files)
 
 
 @app.route("/chart/<filename>")
