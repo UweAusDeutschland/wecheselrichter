@@ -324,3 +324,14 @@ Für Multi-Inverter:
 
 **Last Updated:** 2026-05-16  
 **Version:** 0.3.0
+# #   S a m p l i n g   R a t e   C l a r i f i c a t i o n 
+ 
+ * * I M P O R T A N T : * *   T h e   m o n i t o r i n g   d a t a   i s   s a m p l e d   a t   * * 1   s e c o n d   i n t e r v a l s * * ,   N O T   5 0 m s .   T h e   ' 5 0 m s   /   1 s   /   5 s '   i n   t h e   d i a g r a m   r e f e r s   t o   d i f f e r e n t   t i m i n g   p a r a m e t e r s : 
+ 
+ -   * * 5 0 m s * * :   D N S   r e s o l u t i o n   r e t r y   d e l a y   ( f a s t   p a t h ) 
+ -   * * 1 s * * :   P r i m a r y   s a m p l i n g   i n t e r v a l   f o r   m o n i t o r i n g   d a t a   c o l l e c t i o n 
+ -   * * 5 s * * :   C o n n e c t i o n   t e s t   /   b a c k o f f   d e l a y   ( s l o w   p a t h ,   e r r o r   r e c o v e r y ) 
+ 
+ - - - 
+ * * S u m m a r y : * *   M o n i t o r i n g   f r e q u e n c y   =   1   H z   ( o n e   r e a d i n g   p e r   s e c o n d ) .   T h e   i n v e r t e r ' s   M o d b u s   r e g i s t e r s   a r e   r e a d   o n c e   e v e r y   s e c o n d .   F r e q u e n c y   d a t a   i s   s t i l l   r e c o r d e d   a t   t h i s   r a t e   f o r   a l l   t h r e e   m e t r i c s   ( f r e q u e n c y ,   p o w e r ,   b a t t e r y ) ,   n o t   a t   d i f f e r e n t   r a t e s .  
+ 
