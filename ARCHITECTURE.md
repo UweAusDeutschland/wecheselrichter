@@ -20,7 +20,7 @@ Technische Übersicht der Systemarchitektur.
     │   (unified monitoring)      │         │ - Static Files (CSS)     │
     │                             │         │ - Templates (HTML)       │
     │ [Sampling Threads]          │         │                          │
-    │ 50ms / 1s / 5s              │         │ [HTTP Server]            │
+    │  1s                         │         │ [HTTP Server]            │
     └─────────────────────────────┘         └──────────────────────────┘
               │                                      │
               │ Modbus TCP                          │ Read
@@ -333,5 +333,6 @@ Für Multi-Inverter:
  -   * * 5 s * * :   C o n n e c t i o n   t e s t   /   b a c k o f f   d e l a y   ( s l o w   p a t h ,   e r r o r   r e c o v e r y ) 
  
  - - - 
- * * S u m m a r y : * *   M o n i t o r i n g   f r e q u e n c y   =   1   H z   ( o n e   r e a d i n g   p e r   s e c o n d ) .   T h e   i n v e r t e r ' s   M o d b u s   r e g i s t e r s   a r e   r e a d   o n c e   e v e r y   s e c o n d .   F r e q u e n c y   d a t a   i s   s t i l l   r e c o r d e d   a t   t h i s   r a t e   f o r   a l l   t h r e e   m e t r i c s   ( f r e q u e n c y ,   p o w e r ,   b a t t e r y ) ,   n o t   a t   d i f f e r e n t   r a t e s .  
+ * * S u m m a r y : * *   M o n i t o r i n g   f r e q u e n c y   =   1   H z   ( o n e   r e a d i n g   p e r   s e c o n d ) .   T h e   i n v e r t e r ' s   M o d b u s   r e g i s t e r s   a r e   r e a d   o n c e   e v e r y   s e c o n d .   F r e q u e n c y   d a t a   i s   s t i l l   r e c o r d e d   a t   t h i s   r a t e   f o r   a l l   t h r e e   m e t r i c s   ( f r e q u e n c y ,   p o w e r ,   b a t t e r y ) ,   n o t   a t   d i f f e r e n t   r a t e s . 
+ 
  
