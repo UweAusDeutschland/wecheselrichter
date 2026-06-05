@@ -1,4 +1,14 @@
-# Changelog
+## [0.3.1] - 2026-06-05
+
+### ✨ Added
+- **Combined Monitor** (`combined_monitor.py`)
+  - Unified monitoring process replacing three separate scripts
+  - Consolidated sampling: frequency (50ms), power (1s), battery (5s) in single Python process
+  - Single entry point for local development and Docker deployments
+
+### 🔧 Fixed
+- Replaced `frequencymonitor.py`, `powermonitor.py`, `batterymonitor.py` with `combined_monitor.py`
+- Updated all references to old monitor files throughout documentation
 
 Alle wichtigen Änderungen am Projekt werden hier dokumentiert.
 
