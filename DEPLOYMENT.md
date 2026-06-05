@@ -14,7 +14,7 @@ cd wecheselrichter
 # Start
 docker-compose up -d
 
-# Logs anschauen
+# Logs anschauen (combined monitor process)
 docker-compose logs -f sungrow-monitor-1
 
 # Stop
@@ -25,6 +25,7 @@ docker-compose down
 - Port 5000 wird nach außen exposet
 - `data/` Volume wird persistiert
 - Container läuft im Hintergrund (`-d` flag)
+- Der Monitor-Prozess wurde zu einem **kombinierten Monitor** zusammengefasst, der Frequenz-, Leistungs- und Batteriedaten in einer einzigen Python-Skript verarbeitet
 
 ### Auf Docker Hub deployen
 
@@ -149,14 +150,14 @@ kubectl get pods
 ### Container-Logs
 
 ```bash
-# Live-Logs
-docker-compose logs -f
+# Live-Logs (combined monitor)
+docker-compose logs -f sungrow-monitor-1
 
 # Letzte 100 Zeilen
-docker-compose logs --tail=100
+docker-compose logs --tail=100 sungrow-monitor-1
 
 # Nur Errors
-docker-compose logs | grep ERROR
+docker-compose logs | grep ERROR sungrow-monitor-1
 ```
 
 ### Health-Check
@@ -165,9 +166,14 @@ docker-compose logs | grep ERROR
 # Web-App antwortet?
 curl http://localhost:5000
 
-# CSV-Dateien werden erstellt?
+# CSV-Dateien werden erstellt? (alle Monitor-Daten)
 ls -la data/
-tail -f data/frequency_*.csv
+tail -f data/frequency_*.csv  # Frequenzdaten
+tail -f data/power_*.csv    # Leistungsdaten
+tail -f data/battery_*.csv  # Batteriedaten
+
+# Combined Monitor läuft?
+docker exec wecheselrichter-sungrow-monitor-1 ps aux | grep combined_monitor.py
 
 # Modbus-Verbindung?
 docker exec wecheselrichter-sungrow-monitor-1 nc -zv modbusSungrow.fritz.box 502
@@ -253,8 +259,8 @@ services:
 
 ```bash
 # Weniger oft auslesen → weniger CPU
-# powermonitor.py
-interval = 5.0  # Statt 1.0 Sekunde
+# combined_monitor.py (alle Intervalle zusammen)
+# frequency_interval, power_interval, battery_interval anpassen
 ```
 
 ### Datenbank statt CSV
